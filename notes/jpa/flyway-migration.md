@@ -73,15 +73,20 @@ Flyway 首次运行会在库里自动建一张 `flyway_schema_history`，每跑�
 
 ```sql
 -- src/main/resources/db/migration/V1__init_user.sql
-CREATE TABLE user (
+CREATE TABLE `users` (
     id          BIGINT       NOT NULL AUTO_INCREMENT,
     username    VARCHAR(50)  NOT NULL,
     password    VARCHAR(100) NOT NULL,
     created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     UNIQUE KEY uk_username (username)
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ```
+
+> **表名约定（影响所有实体）：** 表名统一用**复数英文**（`users`/`customers`/`leads`/`organizations`）。原因：① `user` 是 MySQL 保留字，裸写 SQL 要加反引号易踩坑，复数 `users` 避开；② 复数是英文技术圈主流约定，更适合海外项目。JPA 实体类名用单数 + `@Table(name="users")` 显式声明。
+
+> **YAGNI：** V1 只建登录注册必需字段。`tenant_id`/`user_tenant` 关联表留给 W4-5（V2），`org_id` 留给 W6，角色权限留给 W7-8。每个里程碑新建一个版本脚本，不在 V1 预埋空字段。
 
 1. 加依赖（Boot 4 默认不自动引）：`flyway-core`、`flyway-mysql`。
 2. 关 JPA 自动建表：`spring.jpa.hibernate.ddl-auto: validate`（建表交 Flyway，JPA 只校验）。
