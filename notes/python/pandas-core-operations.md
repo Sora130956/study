@@ -1,429 +1,324 @@
-# pandas 入门教程：从零开始
+# pandas 接单场景手册（AI 协作版）
 
 > 对应计划：第二周（8月18日–22日）周四
-> 适合：完全没接触过 pandas，但会 Python 基础语法的人
-> 学习方式：边看边敲，每个代码块都可以直接运行
+> 定位：接单实战手册。记住 pandas **能做什么**，看懂每个场景的**代码大致结构**；
+> 语法细节、参数细节不背，实际写代码交给 AI，自己负责 review 和自测。
+> 配套笔记：零基础学习教程见 [pandas-tutorial.md](./pandas-tutorial.md)（先学那个，再看这个）。
 
 ---
 
-## 第 0 章：pandas 是干啥的？
+## pandas 能力地图（记住这张表就够了）
 
-**一句话：pandas 就是 Python 版的 Excel。**
+| 大类 | 能力 | 对应函数 |
+|------|------|---------|
+| 读 | 读 CSV / Excel / JSON | `read_csv` / `read_excel` |
+| 看 | 看前几行、行列数、类型、统计概览 | `head` / `shape` / `info` / `describe` |
+| 选 | 选列、按条件选行 | `df['列']` / `df[条件]` |
+| 改 | 加列、改类型、去重、填/删空值 | 赋值 / `astype` / `drop_duplicates` / `fillna` / `dropna` |
+| 算 | 分组统计、透视表 | `groupby().agg()` / `pivot_table` |
+| 合 | 纵向拼接、横向关联（类似 SQL JOIN） | `concat` / `merge` |
+| 写 | 写 CSV / Excel（可多 sheet） | `to_csv` / `to_excel` / `ExcelWriter` |
 
-你在 Excel 里干的活——打开表格、筛选行、按列排序、分类汇总、做透视表——用 pandas 几行代码就能搞定。区别是：
+**核心数据结构就两个：**
+- `DataFrame` = 一张 Excel 表（行 + 列）
+- `Series` = 表里的一列
 
-| Excel | pandas |
-|-------|--------|
-| 鼠标点来点去 | 写代码，一次写好反复用 |
-| 几十万行就卡死 | 几百万行也扛得住 |
-| 手动操作无法复现 | 脚本可以重复跑、可以自动化 |
-| 合并10个表要复制粘贴半天 | 一个循环搞定 |
-
-**为什么接单要用它？** Upwork 上大量 Python 单子就是这类需求：
-- "我有 50 个 Excel 报表，帮我合并成一个"
-- "帮我从这个 CSV 里筛选出符合某些条件的数据，输出成 Excel"
-- "帮我每月自动生成销售统计报表"
-
-这些活手动干要几小时，写个 pandas 脚本几秒钟跑完——这就是你的价值。
-
-**安装：**
-
-```bash
-pip install pandas openpyxl
-```
-
-（openpyxl 是让 pandas 能读写 Excel 文件的依赖库）
+**两个最常见的坑（记住，省调试时间）：**
+1. 多条件筛选用 `&` / `|` 且每个条件加括号，不是 `and` / `or`
+2. 中文 CSV 读写乱码：读写都加 `encoding='utf-8-sig'`
 
 ---
 
-## 第 1 章：核心概念——一张表
+## 场景 1：拿到文件，先看看数据长什么样
 
-pandas 里最重要的东西叫 **DataFrame**，你就把它理解成**一张 Excel 表**：
+**接单背景**：客户丢过来一个 CSV，第一步永远是先摸清结构。
 
 ```python
 import pandas as pd
 
-df = pd.DataFrame({
-    '姓名': ['张三', '李四', '王五', '赵六'],
-    '年龄': [25, 30, 35, 28],
-    '城市': ['北京', '上海', '北京', '广州'],
-    '工资': [8000, 12000, 15000, 9000]
-})
+df = pd.read_csv('orders.csv', encoding='utf-8-sig')
 
-print(df)
+print(df.head())        # 前5行长什么样
+print(df.shape)         # (行数, 列数)
+print(df.dtypes)        # 每列是什么类型（数字？文本？日期？）
+print(df.isna().sum())  # 每列有几个空值（判断数据脏不脏）
+```
+
+**review 要点**：日期列经常被读成文本（`object`），金额列可能混着货币符号——后面清洗就是处理这些。
+
+---
+
+## 场景 2：筛选 + 清洗脏数据
+
+**接单背景**："帮我把无效数据去掉，只留符合xxx条件的"。
+
+```python
+# 筛选：单条件
+df = df[df['金额'] > 0]
+
+# 筛选：多条件（注意 & 和括号）
+df = df[(df['金额'] > 0) & (df['状态'] == '已完成')]
+
+# 清洗：去重
+df = df.drop_duplicates()
+
+# 清洗：删掉关键列为空的行
+df = df.dropna(subset=['金额'])
+
+# 清洗：空值填默认值
+df['备注'] = df['备注'].fillna('无')
+
+# 类型转换：文本日期 → 真日期，文本数字 → 真数字
+df['日期'] = pd.to_datetime(df['日期'])
+df['金额'] = pd.to_numeric(df['金额'], errors='coerce')  # 转不了的变 NaN
+```
+
+**review 要点**：`errors='coerce'` 会把脏数据变成 NaN，转换后记得再 `dropna` 一次。
+
+---
+
+## 场景 3：分组统计出报表（最高频需求）
+
+**接单背景**："按地区/按月/按品类给我统计一下"。这是 Upwork 上最常见的数据处理单子。
+
+```python
+# 按城市分组，算多种统计
+result = df.groupby('城市').agg(
+    总金额=('金额', 'sum'),
+    平均金额=('金额', 'mean'),
+    订单数=('金额', 'count')
+).reset_index()
+
+print(result)
 ```
 
 输出：
 
 ```
-   姓名  年龄  城市     工资
-0  张三  25  北京   8000
-1  李四  30  上海  12000
-2  王五  35  北京  15000
-3  赵六  28  广州   9000
+   城市      总金额     平均金额  订单数
+0  北京  150000.00  7500.00   20
+1  上海   98000.00  8166.67   12
 ```
 
-看到没，就是一张表：
-- 有**列名**（姓名、年龄、城市、工资）
-- 左边那一列 0、1、2、3 叫**索引（index）**，相当于 Excel 的行号
-- 整个表就是 `df`（DataFrame 的变量名习惯叫 df）
+**代码结构就三步**：`groupby(按什么分)` → `agg(新列名=(对哪列, 算什么))` → `reset_index()`。
 
-**一列**单独拿出来叫 **Series**，就是一维的数据：
+**常用统计**：`sum` 总和 / `mean` 平均 / `max` / `min` / `count` 数量 / `nunique` 去重计数。
+
+**按月统计**（从日期列提取月份再分组）：
 
 ```python
-print(df['姓名'])      # 取出"姓名"这一列
-```
-
-> 约定：全文开头都有 `import pandas as pd`，后面不再重复写。
-
----
-
-## 第 2 章：读取文件——把 CSV 变成表
-
-实际工作中数据都在文件里，最常见的是 **CSV 文件**（用记事本都能打开的那种，每行一条数据，逗号分隔）。
-
-假设有个 `employees.csv` 文件，内容是：
-
-```csv
-姓名,年龄,城市,工资
-张三,25,北京,8000
-李四,30,上海,12000
-王五,35,北京,15000
-赵六,28,广州,9000
-孙七,42,北京,18000
-```
-
-读取只要一行：
-
-```python
-df = pd.read_csv('employees.csv')
-print(df)
-```
-
-**读 Excel 文件也一样简单：**
-
-```python
-df = pd.read_excel('employees.xlsx')
-```
-
-**常见坑——中文乱码：**
-
-```python
-# 如果报编码错误或读出来是乱码，试试指定编码
-df = pd.read_csv('employees.csv', encoding='utf-8')
-df = pd.read_csv('employees.csv', encoding='gbk')   # Windows 中文系统常见
+df['月份'] = df['日期'].dt.to_period('M')   # 2026-08-13 → 2026-08
+月报 = df.groupby('月份').agg(总金额=('金额', 'sum')).reset_index()
 ```
 
 ---
 
-## 第 3 章：先认识你的数据——查看基本信息
+## 场景 4：合并多个文件
 
-拿到一个陌生的表，第一件事永远是**先看看它长什么样**：
+**接单背景**："我每个月一个 Excel，帮我合并成一个"——经典单子。
 
 ```python
-df.head()        # 看前5行（最常用，防止表太大刷屏）
-df.head(3)       # 看前3行
-df.shape         # (5, 4) ← 5行4列
-df.columns       # 有哪些列
-df.info()        # 每列的类型、有没有空值
-df.describe()    # 数值列的统计：平均值、最大最小值等
+import glob
+
+# 找到所有文件
+files = glob.glob('data/*.xlsx')        # data 文件夹下所有 xlsx
+
+# 逐个读入，纵向拼接（行追加）
+df = pd.concat([pd.read_excel(f) for f in files], ignore_index=True)
+
+df.to_excel('合并结果.xlsx', index=False)
 ```
 
-输出 `df.describe()` 示例：
-
-```
-             年龄           工资
-count   5.000000      5.000000   ← 有5个值
-mean   32.000000  12400.000000   ← 平均年龄32，平均工资12400
-std     6.557439   4012.480598
-min    25.000000   8000.000000   ← 最小值
-max    42.000000  18000.000000   ← 最大值
-```
-
-这几行代码没有记忆负担，**每次拿到新数据固定跑一遍**就行。
+**review 要点**：各文件列名必须一致才能拼；如果不一致，先逐个 `rename` 对齐列名再 `concat`。
 
 ---
 
-## 第 4 章：筛选——"我要北京的人"
+## 场景 5：多表关联（类似 SQL JOIN / Excel VLOOKUP）
 
-这是最核心的操作，对应 Excel 的"筛选"按钮。
-
-**思路：写一个条件，得到你想要的行。**
+**接单背景**："订单表里有商品ID，商品表里有商品名称和价格，帮我合到一张表"。
 
 ```python
-# 筛选：城市是北京的
-df[df['城市'] == '北京']
+orders = pd.read_excel('订单.xlsx')      # 有 商品ID、数量
+products = pd.read_excel('商品.xlsx')    # 有 商品ID、名称、单价
+
+# 按 商品ID 把两张表拼起来（左连接：保留所有订单）
+df = pd.merge(orders, products, on='商品ID', how='left')
+
+# 拼完直接算金额
+df['金额'] = df['数量'] * df['单价']
 ```
 
-结果：
+**`how` 参数对应 SQL JOIN：**
 
-```
-   姓名  年龄  城市     工资
-0  张三  25  北京   8000
-2  王五  35  北京  15000
-4  孙七  42  北京  18000
-```
+| 写法 | 效果 |
+|------|------|
+| `how='left'` | 保留左表全部行（最常用，防止订单丢数据） |
+| `how='inner'` | 只保留两边都有的 |
+| `how='outer'` | 两边全保留，缺的填 NaN |
 
-**这行代码怎么理解？** 拆开看：
-
-```python
-df['城市'] == '北京'
-# 结果是一列 True/False：
-# 0     True   ← 张三是北京的
-# 1    False
-# 2     True
-# 3    False
-# 4     True
-
-df[一列True/False]   # 只保留 True 的行
-```
-
-**更多条件写法：**
-
-```python
-df[df['工资'] > 10000]                          # 工资大于1万
-df[df['年龄'] <= 30]                            # 年龄小于等于30
-df[df['城市'].isin(['北京', '广州'])]           # 城市是北京或广州
-
-# 多个条件同时满足：用 & 连接，每个条件加括号
-df[(df['城市'] == '北京') & (df['工资'] > 10000)]
-
-# 满足任意一个：用 |
-df[(df['年龄'] < 26) | (df['工资'] > 15000)]
-```
-
-> 注意：多个条件时必须用 `&` 和 `|`（不是 `and` / `or`），且每个条件都要用括号包起来。这是 pandas 最常见的报错来源。
-
-**筛选后只想要某几列：**
-
-```python
-df.loc[df['城市'] == '北京', ['姓名', '工资']]
-#        条件（行）          想要的列
-```
+**review 要点**：关联后行数变多了？说明关联键在右表里有重复，先 `products.drop_duplicates(subset=['商品ID'])`。
 
 ---
 
-## 第 5 章：排序
+## 场景 6：一个表拆成多个文件
+
+**接单背景**：和场景 4 相反——"按部门把这个总表拆成单独的 Excel 发给我"。
 
 ```python
-df.sort_values('工资')                       # 按工资升序（从小到大）
-df.sort_values('工资', ascending=False)      # 降序（从大到小）
-df.sort_values(['城市', '工资'])             # 先按城市，再按工资
+df = pd.read_excel('总表.xlsx')
+
+# 按部门分组，每组写出一个文件
+for 部门, 子表 in df.groupby('部门'):
+    子表.to_excel(f'输出/{部门}.xlsx', index=False)
 ```
+
+**代码结构**：`groupby` 遍历 → 每次循环拿到 `(分组值, 该组的 DataFrame)` → 分别导出。
 
 ---
 
-## 第 6 章：加列、改列
+## 场景 7：完整实战——脏 CSV 进，多 sheet Excel 报告出
 
-```python
-# 直接赋值就能加新列
-df['年薪'] = df['工资'] * 12
+**接单背景**：把前面所有能力串起来，这就是一个完整可交付的"数据处理脚本"单子。
 
-# 基于条件加列：给工资过万的人标"高薪"
-df['级别'] = df['工资'].apply(lambda x: '高薪' if x > 10000 else '普通')
-
-# 修改列名
-df = df.rename(columns={'工资': '月薪'})
-
-# 删除一列
-df = df.drop(columns=['级别'])
-```
-
-`apply(lambda x: ...)` 的意思：**对列里每个值 x 执行一遍这个函数**。不懂 lambda 的话可以写普通函数：
-
-```python
-def 定级(x):
-    if x > 10000:
-        return '高薪'
-    else:
-        return '普通'
-
-df['级别'] = df['工资'].apply(定级)
-```
-
----
-
-## 第 7 章：分组统计——本教程最重要的部分
-
-**需求：每个城市的平均工资是多少？**
-
-Excel 里你要做透视表，pandas 里一行：
-
-```python
-df.groupby('城市')['工资'].mean()
-```
-
-结果：
-
-```
-城市
-上海    12000
-北京    14333
-广州     9000
-Name: 工资, dtype: float64
-```
-
-**怎么理解：** `groupby('城市')` = 把数据按城市分成三堆（北京3人、上海1人、广州1人），然后对每堆的"工资"算平均值。
-
-**常用统计函数：**
-
-```python
-df.groupby('城市')['工资'].mean()    # 平均值
-df.groupby('城市')['工资'].sum()     # 总和
-df.groupby('城市')['工资'].max()     # 最大
-df.groupby('城市')['工资'].count()   # 数量
-```
-
-**一次算好几种统计（推荐写法）：**
-
-```python
-result = df.groupby('城市').agg(
-    平均工资=('工资', 'mean'),
-    最高工资=('工资', 'max'),
-    人数=('姓名', 'count')
-).reset_index()          # 把城市变回普通列，方便后续处理/导出
-
-print(result)
-```
-
-结果：
-
-```
-   城市      平均工资   最高工资  人数
-0  上海  12000.00  12000   1
-1  北京  14333.33  18000   3
-2  广州   9000.00   9000   1
-```
-
-**这个结果就是一张新的 DataFrame**，可以直接导出成 Excel 交给客户——这就完成了一个最简单的"数据处理"单子。
-
----
-
-## 第 8 章：处理脏数据（真实世界必有）
-
-真实数据经常是脏的：有空值、有重复。假设数据变成这样：
-
-```
-   姓名  年龄  城市     工资
-0  张三  25  北京   8000
-1  李四  30  上海  12000
-2  王五  35  北京    NaN    ← 工资缺失
-3  张三  25  北京   8000    ← 和第一行重复
-```
-
-```python
-# 先看看哪里有空值
-df.isna().sum()          # 每列有几个空值
-
-# 处理空值：填一个值
-df['工资'] = df['工资'].fillna(0)         # 空工资填0
-
-# 或者：直接删掉有空值的行
-df = df.dropna()
-
-# 去重
-df = df.drop_duplicates()
-```
-
----
-
-## 第 9 章：导出——把结果交给客户
-
-```python
-# 导出 CSV（encoding='utf-8-sig' 是为了 Excel 打开不乱码，记住这个固定搭配）
-df.to_csv('result.csv', index=False, encoding='utf-8-sig')
-
-# 导出 Excel
-df.to_excel('result.xlsx', index=False)
-```
-
-> `index=False` 的意思是不要导出左边那列 0,1,2,3 的行号——客户不需要它。
-
-**导出多个 sheet：**
-
-```python
-with pd.ExcelWriter('报告.xlsx') as writer:
-    df.to_excel(writer, sheet_name='明细数据', index=False)
-    result.to_excel(writer, sheet_name='城市统计', index=False)
-```
-
----
-
-## 第 10 章：完整实战——把前面所有东西串起来
-
-**场景（模拟真实接单）：** 客户给你一个销售 CSV，要求：清洗数据 → 按月统计 → 输出 Excel 报告。
+**需求**：客户的销售 CSV → 清洗 → 月度汇总 + 品类透视 → 输出格式化 Excel。
 
 ```python
 import pandas as pd
 
-# 1. 读取
+# 1. 读取 + 总览
 df = pd.read_csv('sales.csv', encoding='utf-8-sig')
-
-# 2. 先看看数据
 print(df.head())
 print(df.isna().sum())
 
-# 3. 清洗：删掉金额为空的行，去重
-df = df.dropna(subset=['金额'])
+# 2. 清洗
+df = df.dropna(subset=['金额', '日期'])
 df = df.drop_duplicates()
-
-# 4. 日期列转成真正的日期类型，并提取出"月份"
-df['日期'] = pd.to_datetime(df['日期'])
-df['月份'] = df['日期'].dt.to_period('M')    # 2026-08-13 → 2026-08
-
-# 5. 只保留有效订单（金额大于0）
+df['金额'] = pd.to_numeric(df['金额'], errors='coerce')
+df = df.dropna(subset=['金额'])
 df = df[df['金额'] > 0]
+df['日期'] = pd.to_datetime(df['日期'])
+df['月份'] = df['日期'].dt.to_period('M')
 
-# 6. 按月份分组统计
+# 3. 统计：月度汇总
 月报 = df.groupby('月份').agg(
     总金额=('金额', 'sum'),
     平均单笔=('金额', 'mean'),
     订单数=('金额', 'count')
 ).reset_index()
 
-# 7. 导出 Excel 报告（两个 sheet：汇总 + 明细）
-with pd.ExcelWriter('销售月报.xlsx') as writer:
-    月报.to_excel(writer, sheet_name='月度汇总', index=False)
-    df.to_excel(writer, sheet_name='订单明细', index=False)
+# 4. 统计：品类 × 月份透视表
+透视 = pd.pivot_table(
+    df, values='金额', index='月份', columns='品类',
+    aggfunc='sum', fill_value=0
+)
 
-print('搞定，已生成 销售月报.xlsx')
+# 5. 导出：一个 Excel 三个 sheet
+with pd.ExcelWriter('销售报告.xlsx') as writer:
+    月报.to_excel(writer, sheet_name='月度汇总', index=False)
+    透视.to_excel(writer, sheet_name='品类透视')
+    df.to_excel(writer, sheet_name='清洗后明细', index=False)
+
+print('完成：销售报告.xlsx')
 ```
 
-**这个脚本就是一个最小可用的"数据处理产品"。** 客户以后每月把新 CSV 丢给你（或者丢进文件夹），跑一遍就出报告。
+**这就是交付物本身。** 客户每月把新 CSV 放进文件夹，跑一遍脚本就出报告。
 
 ---
 
-## 第 11 章：学习路径建议
-
-按你今天的计划（pandas 核心操作），建议按这个顺序练：
-
-1. **先跑通本文所有代码**（约1小时）——用第1章那个小表，每个代码块都敲一遍、改改参数看看结果变化
-2. **做一个练习**：自己造一个 CSV（或用你爬虫项目爬到的 books.csv），完成"读入 → 筛选 → 分组统计 → 导出 Excel"全流程
-3. **遇到具体问题再查**：比如"怎么合并两个表"（`pd.merge`）、"怎么拆列"（`str.split`），用到再学，不用提前背
-
-**今天不需要掌握的**（用到再说）：
-- 透视表 `pivot_table`
-- 多表合并 `merge` / `concat`
-- 时间序列重采样 `resample`
-- 多层索引 MultiIndex
-
----
-
-## 附录：速查表
+## 附录 A：速查表（review AI 代码时对照用）
 
 | 我想… | 代码 |
 |-------|------|
 | 读 CSV | `pd.read_csv('f.csv', encoding='utf-8-sig')` |
 | 读 Excel | `pd.read_excel('f.xlsx')` |
 | 看前几行 | `df.head()` |
-| 看行数列数 | `df.shape` |
+| 看行列数 | `df.shape` |
 | 选一列 | `df['列名']` |
 | 筛选行 | `df[df['列名'] == '值']` |
 | 多条件筛选 | `df[(条件1) & (条件2)]` |
 | 排序 | `df.sort_values('列名', ascending=False)` |
 | 加新列 | `df['新列'] = df['旧列'] * 2` |
-| 删空值行 | `df.dropna()` |
+| 删空值行 | `df.dropna(subset=['关键列'])` |
+| 空值填充 | `df['列'].fillna(默认值)` |
 | 去重 | `df.drop_duplicates()` |
+| 日期转换 | `pd.to_datetime(df['日期'])` |
+| 数字转换 | `pd.to_numeric(df['列'], errors='coerce')` |
 | 分组统计 | `df.groupby('列').agg(新名=('列', 'sum'))` |
+| 纵向合并 | `pd.concat([df1, df2], ignore_index=True)` |
+| 横向关联 | `pd.merge(df1, df2, on='键', how='left')` |
+| 透视表 | `pd.pivot_table(df, values=, index=, columns=, aggfunc=)` |
 | 导出 CSV | `df.to_csv('f.csv', index=False, encoding='utf-8-sig')` |
 | 导出 Excel | `df.to_excel('f.xlsx', index=False)` |
+| 多 sheet | `with pd.ExcelWriter('f.xlsx') as w:` |
+
+---
+
+## 附录 B：遇到问题怎么问 AI
+
+**好的提问 = 输入什么样 + 想要什么样 + 现在卡在哪：**
+
+> "我有一个 CSV，列是：日期（2026-08-13 格式文本）、金额（有的带¥符号）、城市。
+> 我想要：按月统计总金额，输出 Excel。
+> 现在 `pd.to_datetime` 报错 / 金额求和结果是文本拼接，怎么修？"
+
+比"pandas 怎么按月统计"得到的答案质量高得多。
+
+---
+
+## 附录 C：原理性备注（不用记，review 时备查）
+
+以下内容是学习过程中答疑记录的，**属于语法糖细节，不需要背**。实际写代码交给 AI 时这些不重要，但 review 时遇到可以回来对照。
+
+### `df['城市']` 为什么返回的不是列表？
+
+`df['城市']` 看起来像 dict 取值，但返回的是 `Series` 对象（带索引、列名、dtype）。
+
+**原因**：`[]` 在 Python 里不是 dict 专用语法，任何类实现 `__getitem__` 方法就能用 `[]`：
+
+- `dict.__getitem__` → 返回 value
+- `list.__getitem__` → 返回第 n 个元素
+- `DataFrame.__getitem__` → 返回一列（Series）
+
+（Java 不允许重载操作符，所以 Java 里必须显式调方法如 `df.getColumn("城市")`。）
+
+```python
+col = df['城市']
+print(type(col))        # <class 'pandas.core.series.Series'>
+print(col.tolist())     # ['北京', '上海'] ← 转回普通 list
+```
+
+`[]` 在 DataFrame 上按传入类型不同行为不同：
+
+```python
+df['城市']              # 传字符串     → 一列（Series）
+df[['城市', '工资']]    # 传列表       → 多列（DataFrame）
+df[df['工资'] > 10000]  # 传布尔Series → 筛选后的行（DataFrame）
+```
+
+### `df['城市'] == '北京'` 为什么能直接筛选？
+
+`==` 也被重载了：`Series.__eq__('北京')` 是**对每个元素逐个比较**，返回布尔 Series `[True, False, True, ...]`。这种"一个操作作用于所有元素"叫**向量化（vectorization）**。
+
+所以筛选是两步重载的组合：
+
+```python
+df[df['城市'] == '北京']
+#      ↑________________↑
+#      ① Series.__eq__ → 布尔 Series
+#   ↑__________________________↑
+#   ② DataFrame.__getitem__(布尔Series) → 保留 True 的行
+```
+
+同理，`df['工资'] * 12`、`df['工资'] > 10000` 都是向量化操作。
+
+### `agg(平均工资=('工资', 'mean'))` 是什么语法？
+
+这是 Python 的**关键字参数**，不是字典：
+
+- `平均工资` 是参数名（Python 3 允许中文标识符），不是字符串，不用引号
+- `('工资', 'mean')` 是元组：`(源列名, 聚合函数)`
+- `agg` 内部用 `**kwargs` 接收：`{'平均工资': ('工资', 'mean'), ...}`，参数名变成新列名
+
+`**kwargs` 核心理解：`func(姓名='张三')` 等价于 `func(**{'姓名': '张三'})`——参数名变成 dict 的键，参数值变成 dict 的值。适合"参数名本身就是数据"的场景（比如聚合时自定义新列名）。
+
+参数名有空格/特殊字符时，只能退化到字典写法：`agg(**{'平均 工资': ('工资', 'mean')})`。
