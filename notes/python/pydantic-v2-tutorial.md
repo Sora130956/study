@@ -223,6 +223,9 @@ s = user.model_dump_json()     # '{"name":"张三","age":25}'
 
 外加一个 AI 场景高频方法：
 
+- **本质**：Pydantic 模型生成的 **JSON Schema 蓝图（元数据）**，只描述结构（字段名、类型、约束），不包含具体数据。
+    
+- **AI 核心用法**：作为 `response_format` 或 `tools` 参数传给 LLM API，**强制约束**模型输出必须符合该结构的 JSON，彻底规避格式混乱。
 ```python
 schema = User.model_json_schema()
 # {'properties': {'name': {'title': 'Name', 'type': 'string'},
