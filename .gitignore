@@ -3,3 +3,9 @@ notes/.obsidian/appearance.json
 notes/.obsidian/core-plugins.json
 notes/.obsidian/graph.json
 notes/.obsidian/workspace.json
+notes/.obsidian/community-plugins.json
+notes/.obsidian/hotkeys.json
+*.json
+*.css
+*.js
+*.png
