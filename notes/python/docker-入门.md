@@ -496,7 +496,7 @@ COPY app ./app                             # 只有这层失效，重拷几个 p
 
 ---
 
-## 5. 最小可用的实际用法：一份 `docker-compose.yml`
+## 5. <mark style="background: #BBFABBA6;">最小可用的实际用法：一份 `docker-compose.yml`</mark>
 
 第 4 节那条 `docker run` 又长又要手敲，而且起两个服务（Postgres + API）就得敲两条、还要处理它们之间的网络。**Compose 就是把这些写进一个 YAML 文件，一条命令全起起来。**
 

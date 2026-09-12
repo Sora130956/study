@@ -116,6 +116,28 @@ async with httpx.AsyncClient() as client:   # 进入：准备好连接池
 
 注意最后那句注释——**出了缩进块 client 就废了**，再用会报错。这是第 6 节的坑之一。
 
+**先纠正一个容易理解反的地方**：`async with httpx.AsyncClient() as client` 是**新建一个 client**（它内部自带一个连接池），不是「从池里拿一个 client 来用」。真正「从池里借东西」发生在每次 `await client.get(...)` 时——从**这个 client 的**池里借一条 TCP 连接，用完还回去。`async with` 只负责生命周期：进块初始化，出块 `aclose()` 把池子整个关掉。
+
+**那为什么示例写成小块的 `async with`，而不是建一个 client 用到底？**——因为适用场景不同：
+
+| 场景 | 用法 | 原因 |
+| --- | --- | --- |
+| 脚本、一次性批量任务 | `async with AsyncClient()` 包住一小段 | 用完即走，自动关池最省心 |
+| 常驻服务（FastAPI） | lifespan 里建，存 `app.state`（第 5 节） | client 生命周期 = 应用生命周期，所有请求共享一个池，复用率最高 |
+
+而且 lifespan 里其实也是用 `async with` 写的，只是把作用域拉长到了整个应用：
+
+```python
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    async with httpx.AsyncClient(timeout=..., limits=...) as client:
+        app.state.client = client    # 应用存活期间一直用它
+        yield                        # 应用运行中……
+    # 应用关闭时：自动 aclose，池子被清理
+```
+
+一句话总结：`async with` 是**语法**（保证用完自动关），lifespan 是**放的位置**（决定 client 活多久）。本节的例子只是用最小脚本演示语法，真实服务里就该建一个、用到底。
+
 ### 3.3 连接池（connection pool）
 
 **定义**：客户端内部维护的一组「已经建立好、可以重复使用」的 TCP 连接的集合。
@@ -128,6 +150,7 @@ client = httpx.AsyncClient()   # 这个 client 内部就带着一个连接池
 ```
 
 池子有上限，用 `httpx.Limits` 配。httpx 0.28.1 的默认值是 `Limits(max_connections=100, max_keepalive_connections=20)`，另有 `keepalive_expiry=5.0`（空闲连接 5 秒后回收）。
+![[Pasted image 20260911135516.png]]
 
 ### 3.4 Keep-Alive
 
@@ -476,6 +499,9 @@ if __name__ == "__main__":
     asyncio.run(main())
 ```
 
+![[Pasted image 20260911140335.png]]
+
+
 **逐段解读**
 
 - `LLM_TIMEOUT`：把四个阶段分开配，而不是一个 `timeout=60`。这样做的好处是**失败得更快也更准**：连不上就 5 秒放弃（重试有意义），而模型慢慢生成就允许等 60 秒（重试只是浪费钱）。用一个数字统配就没法区分这两种情况。
@@ -517,7 +543,7 @@ client = httpx.AsyncClient(timeout=30.0)   # 直接传数字,httpx 内部自动�
 
 ## 5. 最小可用的实际用法（生产场景模板）
 
-这是你在 FastAPI 项目里真正要写的样子：**整个进程只有一个 `AsyncClient`**，随应用启动而生，随应用关闭而亡，通过 `Depends` 注入到端点里。
+<mark style="background: #BBFABBA6;">这是你在 FastAPI 项目里真正要写的样子：**整个进程只有一个 `AsyncClient`**，随应用启动而生，随应用关闭而亡，通过 `Depends` 注入到端点里。</mark>
 
 FastAPI 本身的细节（`lifespan` 的机制、`Depends` 的解析规则）这里从简，另有专门文档；本节只关注「client 该放在哪」。
 
@@ -580,6 +606,8 @@ async def ask(question: str, client: HttpClient) -> dict[str, str]:
 
     return {"answer": resp.json()["choices"][0]["message"]["content"]}
 ```
+
+![[Pasted image 20260911141236.png]]
 
 **哪几行是必须的**：`lifespan` 里建 client 并 `yield`、`app = FastAPI(lifespan=lifespan)`、依赖函数、端点里的 `await` 和 `raise_for_status`、以及显式的 `timeout` / `limits`。
 

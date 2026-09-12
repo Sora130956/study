@@ -93,7 +93,7 @@ def test_add():
 
 ### 3.3 测试发现规则
 
-**定义**：pytest 默认自动收集**文件名** `test_*.py` 或 `*_test.py` 中的**函数名** `test_*` 作为测试。
+<mark style="background: #BBFABBA6;">**定义**：pytest 默认自动收集**文件名** `test_*.py` 或 `*_test.py` 中的**函数名** `test_*` 作为测试。</mark>
 
 **大白话**：文件和函数都得叫 `test_` 开头，pytest 才认它。名字不对 = pytest 视而不见（第 6 节有这个坑）。
 
@@ -105,7 +105,7 @@ def check_add(): ...  # 不会被收集，pytest 当它是普通函数
 
 ### 3.4 fixture（测试夹具）
 
-**定义**：用 `@pytest.fixture` 装饰的函数，负责为测试准备好某个东西（数据、客户端、临时目录），测试函数**通过把它的名字写成参数**来取用。
+<mark style="background: #BBFABBA6;">**定义**：用 `@pytest.fixture` 装饰的函数，负责为测试准备好某个东西（数据、客户端、临时目录），测试函数**通过把它的名字写成参数**来取用。</mark>
 
 **大白话**：可复用的「准备工作」。放在工位上的水桶——需要它的工位报一声名字，它就出现在手边。
 
@@ -122,7 +122,7 @@ def test_name(user):              # 参数名写 user，pytest 就把上面的�
 
 ### 3.5 fixture scope（作用域）
 
-**定义**：fixture 重建的频率。`function`（默认，每个测试函数重建一次）、`class`、`module`、`package`、`session`（整个测试会话只建一次）。
+<mark style="background: #BBFABBA6;">**定义**：fixture 重建的频率。`function`（默认，每个测试函数重建一次）、`class`、`module`、`package`、`session`（整个测试会话只建一次）。</mark>
 
 **大白话**：这个水桶是「每辆车换一桶新水」，还是「一整天用同一桶」。默认每次换新的，最安全。
 
@@ -136,7 +136,7 @@ def cart(): return []
 
 ### 3.6 conftest.py
 
-**定义**：pytest 自动加载的特殊文件，放在里面的 fixture 不需要 import，同目录及子目录下的所有测试都能直接用。
+<mark style="background: #BBFABBA6;">**定义**：pytest 自动加载的特殊文件，放在里面的 fixture 不需要 import，同目录及子目录下的所有测试都能直接用。</mark>
 
 **大白话**：车间入口那个公共仪器架。放这儿的东西，全车间随手可取。
 
@@ -151,7 +151,7 @@ def api_key():                # tests/ 下任何测试直接写 api_key 参数�
 
 ### 3.7 参数化（parametrize）
 
-**定义**：用 `@pytest.mark.parametrize` 给一个测试函数喂多组输入，pytest 把它展开成多个独立测试。
+<mark style="background: #BBFABBA6;">**定义**：用 `@pytest.mark.parametrize` 给一个测试函数喂多组输入，pytest 把它展开成多个独立测试。</mark>
 
 **大白话**：同一个工位，换 5 种车速各试一遍，而且哪一种坏了它单独告诉你。
 
@@ -163,7 +163,7 @@ def test_tokens(text, expected):        # 参数名要和上面字符串里的�
 
 ### 3.8 mock / fake / 测试替身
 
-**定义**：测试替身（test double）是替代真实依赖的假对象，统称。**fake** 是有简化实现的假货（假数据库=一个字典）；**mock** 是记录调用、返回预设值的空壳。
+<mark style="background: #BBFABBA6;">**定义**：测试替身（test double）是替代真实依赖的假对象，统称。**fake** 是有简化实现的假货（假数据库=一个字典）；**mock** 是记录调用、返回预设值的空壳。</mark>
 
 **大白话**：碰撞测试用假人，不用真人。你的代码要调 LLM，测试里给它一个「假 LLM」——立刻返回固定答案，不花钱不联网。
 
@@ -174,16 +174,17 @@ class FakeLLM:                            # 一个 fake：结构像真的，行�
 
 **⚠️ 边界在哪里（工作区硬规定，全篇最重要的一条纪律）：**
 
-| 你在测什么 | 该替换什么 | 不该替换什么 |
-|---|---|---|
-| 你自己的业务逻辑 | 它依赖的外部服务（注入 fake，FastAPI 用 `dependency_overrides`） | **被测对象本身** |
-| 你的代码有没有正确调上游 | 在 HTTP 层拦截（respx，第 5 节提一句） | 被测对象本身 |
+| 你在测什么        | 该替换什么                                              | 不该替换什么     |
+| ------------ | -------------------------------------------------- | ---------- |
+| 你自己的业务逻辑     | 它依赖的外部服务（注入 fake，FastAPI 用 `dependency_overrides`） | **被测对象本身** |
+| 你的代码有没有正确调上游 | 在 HTTP 层拦截（respx，第 5 节提一句）                         | 被测对象本身     |
+|              |                                                    |            |
 
-**禁止 mock 被测对象本身。** 如果你把要测的那个函数替换成假的，那测试跑的就是假货，你的真代码一行都没被验证过。这类「绿了但什么都没验证」的测试叫**装饰性测试**，第 6 节有正反例对照。
+**<mark style="background: #BBFABBA6;">禁止 mock 被测对象本身</mark>。** 如果你把要测的那个函数替换成假的，那测试跑的就是假货，你的真代码一行都没被验证过。这类「绿了但什么都没验证」的测试叫**装饰性测试**，第 6 节有正反例对照。
 
 ### 3.9 monkeypatch
 
-**定义**：pytest 内置 fixture，临时修改环境变量、属性、字典项，**测试结束自动还原**。
+**定义**：pytest 内置 fixture，<mark style="background: #BBFABBA6;">临时修改环境变量</mark>、属性、字典项，<mark style="background: #BBFABBA6;">**测试结束自动还原**</mark>。
 
 **大白话**：借东西并保证归还。你把 `OPENAI_API_KEY` 改成假值，测试一结束它自动变回原样，不会污染下一个测试。
 
@@ -193,7 +194,7 @@ def test_reads_key(monkeypatch):                        # 直接写 monkeypatch 
     assert load_settings().api_key == "sk-fake"
 ```
 
-**环境变量一律用 `monkeypatch.setenv`，禁止直接改 `os.environ`**（工作区规定，原因见第 6 节坑 4）。
+<mark style="background: #BBFABBA6;">**环境变量一律用 `monkeypatch.setenv`，禁止直接改 `os.environ</mark>`**（工作区规定，原因见第 6 节坑 4）。
 
 ### 3.10 协程与 await（一句话）
 
@@ -232,13 +233,13 @@ result = await fetch_data()    # 真正执行并拿到结果
 
 ### 示例 1：最小可运行版本
 
-先装依赖（工作区用 uv）：
+<mark style="background: #BBFABBA6;">先装依赖（工作区用 uv）：</mark>
 
 ```bash
 uv add --dev pytest==9.1.1 pytest-asyncio==1.4.0
 ```
 
-两个文件。被测代码：
+<mark style="background: #BBFABBA6;">两个文件。被测代码：</mark>
 
 ```python
 # tokens.py —— 被测代码，普通模块，和测试无关，不需要 import pytest
@@ -247,7 +248,7 @@ def estimate_tokens(text: str) -> int:
     return len(text) // 4          # 整除，向下取整；"abcde"(5 字符) → 1
 ```
 
-测试代码：
+<mark style="background: #BBFABBA6;">测试代码：</mark>
 
 ```python
 # test_tokens.py —— 文件名必须 test_ 开头，否则 pytest 根本不会看它（见 3.3）
@@ -258,7 +259,7 @@ def test_estimate_tokens_basic():         # 函数名必须 test_ 开头，才�
     assert result == 2                    # 断言：不等于 2 就抛 AssertionError，测试失败
 ```
 
-跑它：
+<mark style="background: #BBFABBA6;">跑它：</mark>
 
 ```bash
 uv run pytest -q          # -q 是 quiet，只输出摘要，日常最常用
@@ -423,7 +424,7 @@ def cart(): return []
 
 **这一步你得到了什么**：会用 fixture 抽出准备工作、用参数化批量覆盖边界、用 `pytest.raises` 验证错误路径，并且理解了 fixture 注入不是魔法而是「按参数名查表」。
 
-### 示例 3：贴近项目的样子（conftest + monkeypatch + async + FastAPI 注入 fake）
+### <mark style="background: #BBFABBA6;">示例 3：贴近项目的样子（conftest + monkeypatch + async + FastAPI 注入 fake）</mark>
 
 现在做一个像真项目的结构：一个调 LLM 的异步服务，加一个 FastAPI 端点。
 
@@ -441,7 +442,7 @@ myapp/
     └── test_api.py
 ```
 
-先开启异步测试支持，这一行是本节的前提：
+<mark style="background: #BBFABBA6;">先开启异步测试支持，这一行是本节的前提：</mark>
 
 ```toml
 # pyproject.toml
@@ -490,7 +491,7 @@ class SummaryService:
         return {"summary": reply.strip(), "truncated": truncated}
 ```
 
-共享 fixture 放 conftest：
+<mark style="background: #BBFABBA6;">共享 fixture 放 conftest：</mark>
 
 ```python
 # tests/conftest.py —— 文件名固定，pytest 自动加载，测试里不用 import
@@ -529,7 +530,7 @@ def fake_env(monkeypatch):
     monkeypatch.setenv("LLM_API_KEY", "sk-test-fake")   # 禁止写 os.environ[...]=...
 ```
 
-业务逻辑测试（异步）：
+<mark style="background: #BBFABBA6;">业务逻辑测试（异步）：</mark>
 
 ```python
 # tests/test_service.py
@@ -662,9 +663,9 @@ asyncio_mode = "auto"
 
 ---
 
-## 第 5 节：最小可用的实际用法（生产场景模板）
+## <mark style="background: #BBFABBA6;">第 5 节：最小可用的实际用法（生产场景模板）</mark>
 
-下面这套可以直接复制进新项目。注释标了「必须」和「可选」。
+<mark style="background: #BBFABBA6;">下面这套可以直接复制进新项目。注释标了「必须」和「可选」。</mark>
 
 **1. `pyproject.toml`**
 
@@ -809,7 +810,7 @@ uv run pytest -q
 
 ## 第 6 节：常见坑与易错点
 
-### 坑 1（最重要）：只调协程不 await —— 测试显示 pass，实际什么都没跑
+### <mark style="background: #BBFABBA6;">坑 1（最重要）：只调协程不 await —— 测试显示 pass，实际什么都没跑</mark>
 
 **报错信息原文**（注意它是 Warning，不是 Error）：
 
@@ -839,9 +840,9 @@ async def test_summarize(service):          # 没有 @pytest.mark.asyncio，且 
 
 **解决**（三层防护，都要有）：
 
-1. `pyproject.toml` 里配 `asyncio_mode = "auto"`，从根上消灭错法 B。
-2. 调异步函数一律带 `await`。断言写成 `assert await f() == 具体值`，不要写 `assert f()`——断言一个具体值，协程对象不可能等于它，漏 await 会立刻失败。
-3. 跑测试时扫一眼有没有 `RuntimeWarning: coroutine ... was never awaited`。想更狠一点，把它升级成错误：
+1. <mark style="background: #BBFABBA6;">`pyproject.toml` 里配 `asyncio_mode = "auto"`，从根上消灭错法 B。</mark>
+2. <mark style="background: #BBFABBA6;">调异步函数一律带 `await`。断言写成 `assert await f() == 具体值`，不要写 `assert f()`——断言一个具体值，协程对象不可能等于它，漏 await 会立刻失败。</mark>
+3. <mark style="background: #BBFABBA6;">跑测试时扫一眼有没有 `RuntimeWarning: coroutine ... was never awaited`。</mark><mark style="background: #BBFABBA6;">想更狠一点，把它升级成错误：</mark>
 
 ```toml
 [tool.pytest.ini_options]

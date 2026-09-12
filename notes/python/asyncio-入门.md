@@ -399,7 +399,7 @@ asyncio.run(main())
 
 **单独展开一：`create_task` 的调度时机**
 
-`create_task(coro)` 立刻把协程登记进事件循环，但**并不会马上执行它的第一行代码**——真正开始执行要等当前这段代码遇到下一个 `await`、把控制权交回循环之后。
+<mark style="background: #BBFABBA6;">`create_task(coro)` 立刻把协程登记进事件循环，但**并不会马上执行它的第一行代码**——真正开始执行要等当前这段代码遇到下一个 `await`、把控制权交回循环之后。</mark>
 
 ```python
 task = asyncio.create_task(call_llm("x", 1))  # 已排队，但函数体还没开始跑
@@ -420,7 +420,7 @@ t = asyncio.create_task(call_llm("x", 1)) # 你先跑，我继续往下走，待
 
 **单独展开二：超时的两种写法**
 
-`asyncio.timeout` 是 **Python 3.11+** 才有的上下文管理器。3.10 及更早要用 `asyncio.wait_for`：
+<mark style="background: #BBFABBA6;">`asyncio.timeout` 是 **Python 3.11+** 才有的上下文管理器。3.10 及更早要用 `asyncio.wait_for`：</mark>
 
 ```python
 # 3.11+ 推荐：上下文管理器，可以给「一整段代码」加超时，包含多次调用
@@ -442,7 +442,7 @@ a = await asyncio.wait_for(call_llm("q1", 0.5), timeout=2.0)
 
 ## 5. 最小可用的实际用法（生产场景模板）
 
-把示例三换成真实的 HTTP 调用。这段可以直接复制进项目，改掉 URL 和 payload 就能用。依赖：`pip install httpx`（`httpx.AsyncClient` 是异步版客户端，`requests` 没有异步支持，不能用）。
+<mark style="background: #BBFABBA6;">把示例三换成真实的 HTTP 调用。这段可以直接复制进项目，改掉 URL 和 payload 就能用。依赖：`pip install httpx`（`httpx.AsyncClient` 是异步版客户端，`requests` 没有异步支持，不能用）。</mark>
 
 ```python
 import asyncio

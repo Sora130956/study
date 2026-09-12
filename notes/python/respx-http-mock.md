@@ -5,7 +5,7 @@
 - 学习时长：约 50 分钟 / 可跳过：第 2 节末尾的"经典应用场景"纯背景，赶时间可跳
 - 实测环境：Python 3.12+、respx 0.23.1、httpx 0.28.1、pytest 9.1.1（本文所有代码在此版本组合下跑过）
 
----
+***
 
 ## 第 1 节：它是什么
 
@@ -22,7 +22,7 @@
 - "事先写好的回信" = `respx_mock.post(...).respond(200, json={...})`
 - "剧本" = 匹配规则（什么 URL、什么请求体才给这封回信）
 
----
+***
 
 ## 第 2 节：它解决什么问题
 
@@ -97,13 +97,13 @@ respx 就挂在那个最外边界上：**被测代码的每一行照常执行**�
 - **测重试、退避、熔断**：这类逻辑只有在"对方出错"时才跑得到，真 API 不配合你，假响应随叫随到
 - **测错误处理**：对方返回畸形 JSON、缺字段、空数组时，你的代码是抛清晰异常还是 `KeyError` 崩掉
 
----
+***
 
 ## 第 3 节：读下去之前，先搞懂这些概念
 
 正文代码里出现的每个机制，这里先讲清。没做过 mock 的话，3.1 到 3.3 一定要看。
 
-### 3.1 mock / stub / fake 到底啥区别
+### 3.1 <mark style="background: #BBFABBA6;">mock / stub / fake 到底啥区别</mark>
 
 这三个词经常被混着用，你只要抓住区别就行。它们统称"**测试替身**"（test double），意思是：测试的时候，把真东西换成一个假的替代品，像拍电影用替身演员。
 
@@ -113,14 +113,12 @@ respx 就挂在那个最外边界上：**被测代码的每一行照常执行**�
   ```python
   respx_mock.get("https://a.test/x").respond(200, json={"ok": True})  # 不管谁来问，都返回这个
   ```
-
 - **mock（模拟对象）**：除了给答案，还**记录你怎么调用它**，好让你事后断言"你确实调了 2 次、第二次带的是这个请求体"。
   一行定义：带调用记录的替身。
   大白话：复读机 + 通话录音。
   ```python
   assert route.calls.call_count == 2  # 事后查录音：一共被调了 2 次
   ```
-
 - **fake（假实现）**：一个能真跑的简化版实现，有自己的逻辑，只是不碰真资源。
   一行定义：轻量真实现。
   大白话：不是复读机，是个小玩具版的真机器（比如用内存字典代替数据库）。
@@ -138,16 +136,16 @@ respx 提供的是 **stub + mock**：`respond(...)` 是 stub 的部分，`route.
 
 ### 3.3 httpx 的 transport 层：respx 挂在哪一层
 
-httpx 内部分两层：**你调的 API 层**（`httpx.get` / `client.post` 这些好用的方法）和底下的 **transport 层**（真正建 TCP 连接、发字节、收字节的那个东西，默认是 `httpx.HTTPTransport`）。
+<mark style="background: #BBFABBA6;">httpx 内部分两层：**你调的 API 层**（`httpx.get` / `client.post` 这些好用的方法）和底下的 **transport 层**（真正建 TCP 连接、发字节、收字节的那个东西，默认是 `httpx.HTTPTransport`）。</mark>
 
 - **定义**：transport 是 httpx 里"负责真的上网"的那个可替换零件。
 - **大白话**：API 层是你用的遥控器，transport 是电视机后面的插头。respx 做的事是**把插头拔下来，插到一个假电源上**。
-- **最小示例**：respx 生效期间，httpx 内部的 transport 被换掉了，所以 `httpx.get(...)` 这行代码本身完全不用改。
+- **最小示例**：<mark style="background: #BBFABBA6;">respx 生效期间，httpx 内部的 transport 被换掉了，所以 `httpx.get(...)` 这行代码本身完全不用改。</mark>
 
 ### 3.4 路由（route）与匹配器（matcher）
 
-- **route（路由）**：一条规则，说"符合这些条件的请求，返回这个响应"。
-- **matcher（匹配器）**：route 里用来判断"符不符合"的条件，比如方法、URL、query 参数、json 请求体。
+- **route（路由）**：<mark style="background: #BBFABBA6;">一条规则，说"符合这些条件的请求，返回这个响应"。</mark>
+- **matcher（匹配器）**：<mark style="background: #BBFABBA6;">route 里用来判断"符不符合"的条件，比如方法、URL、query 参数、json 请求体。</mark>
 - **大白话**：route 是假邮局墙上贴的一条规定；matcher 是这条规定里"寄给谁、信里写什么"的部分。
 - **最小示例**：
   ```python
@@ -157,7 +155,7 @@ httpx 内部分两层：**你调的 API 层**（`httpx.get` / `client.post` 这�
 
 ### 3.5 `return_value` vs `side_effect`
 
-- **`return_value`**：固定返回同一个响应，调 100 次都一样。
+- **`return_value`**：<mark style="background: #BBFABBA6;">固定返回同一个响应，调 100 次都一样。</mark>
 - **`side_effect`**：可以传一个**列表**，第一次调用返回第 1 个、第二次返回第 2 个……也可以传一个函数，让响应根据请求内容动态算出来；还能传异常类来模拟超时。
 - **大白话**：`return_value` 是复读机；`side_effect` 是有剧本的演员，第几次出场说什么台词都排好了。
 - **最小示例**：
@@ -167,9 +165,9 @@ httpx 内部分两层：**你调的 API 层**（`httpx.get` / `client.post` 这�
 
 ### 3.6 两个保险开关：`assert_all_mocked` 与 `assert_all_called`
 
-- **`assert_all_mocked`（默认 True）**：测试期间如果冒出一个**没有任何 route 匹配**的请求，直接抛错，绝不让它出去。
+- <mark style="background: #BBFABBA6;">**`assert_all_mocked`（默认 True）**：测试期间如果冒出一个**没有任何 route 匹配**的请求，直接抛错，绝不让它出去。</mark>
   大白话：假邮局遇到一封"墙上规定里没写过"的信，不会好心帮你寄出去，而是当场拉警报。
-  **这是本文最重要的一条，不要关掉它**（第 4.2 和第 6.1 详细讲为什么这个报错是好事）。
+  **<mark style="background: #BBFABBA6;">这是本文最重要的一条，不要关掉它</mark>**（第 4.2 和第 6.1 详细讲为什么这个报错是好事）。
 - **`assert_all_called`**：退出时检查"定义了的 route 是不是都被调用过"，有没被调用的就抛错。
   大白话：检查你贴的规定有没有白贴。
   注意实测值：`respx_mock` fixture 默认 `assert_all_called=False`、`assert_all_mocked=True`；而 `with respx.mock(...)`（带括号）默认两个都是 True。第 6.3 讲这个坑。
@@ -182,23 +180,23 @@ httpx 内部分两层：**你调的 API 层**（`httpx.get` / `client.post` 这�
 
 ### 术语速查表
 
-| 术语 | 大白话 | 正文哪节 |
-| --- | --- | --- |
-| 测试替身 / mock | 测试时用的假货 | 3.1 |
-| stub | 只会给固定答案的复读机 | 3.1 |
-| fake | 能跑的玩具版真实现 | 3.1 |
-| 测试边界 | 自己代码和外部世界的交界线 | 3.2、第 2 节 |
-| transport | httpx 里真正上网的那个插头 | 3.3、4.2 |
-| route | 假邮局墙上的一条规定 | 3.4、4.1 |
-| matcher | 规定里"寄给谁、写什么"的判定条件 | 3.4、4.2 |
-| `respond()` | 直接写一封固定回信 | 4.1 |
-| `return_value` | 每次都回同一封信 | 3.5 |
-| `side_effect` | 有剧本：第几次回哪封信 | 3.5、4.3 |
-| `route.calls` | 通话录音，事后查调了几次、带了什么 | 3.1、4.3 |
-| `assert_all_mocked` | 漏网的请求当场拉警报（别关） | 3.6、6.1 |
-| `assert_all_called` | 检查规定有没有白贴 | 3.6、6.3 |
+| 术语                  | 大白话               | 正文哪节      |
+| ------------------- | ----------------- | --------- |
+| 测试替身 / mock         | 测试时用的假货           | 3.1       |
+| stub                | 只会给固定答案的复读机       | 3.1       |
+| fake                | 能跑的玩具版真实现         | 3.1       |
+| 测试边界                | 自己代码和外部世界的交界线     | 3.2、第 2 节 |
+| transport           | httpx 里真正上网的那个插头  | 3.3、4.2   |
+| route               | 假邮局墙上的一条规定        | 3.4、4.1   |
+| matcher             | 规定里"寄给谁、写什么"的判定条件 | 3.4、4.2   |
+| `respond()`         | 直接写一封固定回信         | 4.1       |
+| `return_value`      | 每次都回同一封信          | 3.5       |
+| `side_effect`       | 有剧本：第几次回哪封信       | 3.5、4.3   |
+| `route.calls`       | 通话录音，事后查调了几次、带了什么 | 3.1、4.3   |
+| `assert_all_mocked` | 漏网的请求当场拉警报（别关）    | 3.6、6.1   |
+| `assert_all_called` | 检查规定有没有白贴         | 3.6、6.3   |
 
----
+***
 
 ## 第 4 节：从最简单的代码示例开始
 
@@ -208,7 +206,7 @@ httpx 内部分两层：**你调的 API 层**（`httpx.get` / `client.post` 这�
 uv add --dev respx pytest pytest-asyncio     # respx 只在测试时用，装到 dev 依赖
 ```
 
-### 4.1 示例一：最小可运行版本
+### 4.1 示例一：<mark style="background: #BBFABBA6;">最小可运行版本</mark>
 
 业务代码，一个用 `httpx.get` 取数据的函数：
 
@@ -268,7 +266,7 @@ get_city_temp()   ──►   httpx.get(...) / client.post()  ──►   HTTPTr
 
 **这一步你得到了什么**：一个不联网、每次结果都一样、毫秒级跑完的测试，而且它真的在验证 `get_city_temp` 的取值逻辑——你把 `temp_c` 写错成 `temp`，它会立刻变红。
 
-### 4.2 示例二：POST + 匹配请求体 + 看保险生效
+### 4.2 示例二：<mark style="background: #BBFABBA6;">POST + 匹配请求体 + 看保险生效</mark>
 
 真实小需求：给一个"提交订单"的函数写测试，要求验证它**发对了请求体**，并且能读到响应头里的追踪 ID。
 
@@ -291,7 +289,7 @@ def create_order(sku: str, qty: int) -> dict:
 
 ```python
 # test_orders.py
-import pytest
+import pytest 
 from orders import create_order
 
 def test_create_order(respx_mock):
@@ -316,7 +314,7 @@ def test_create_order(respx_mock):
 - 匹配条件写得越具体，测试越有价值。这里等于顺手验证了"业务函数确实把 sku 和 qty 装进了请求体"——如果 `create_order` 里把 `qty` 写成了 `quantity`，这个 route 就匹配不上，测试会以"not mocked"报错变红。
 - `route.calls.call_count`：这就是 3.1 说的"通话录音"。断言次数能抓住"循环里多发了一次请求"这类 bug。
 
-**单独展开：漏网的请求会怎样（保险生效的样子）**
+**单独展开：<mark style="background: #BBFABBA6;">漏网的请求会怎样</mark>（保险生效的样子）**
 
 故意让业务代码去请求一个没注册过的 URL，比如测试里只贴了 `/v1/orders` 的规定，代码却请求了 `/v2/orders`。运行结果：
 
@@ -324,11 +322,11 @@ def test_create_order(respx_mock):
 respx.models.AllMockedAssertionError: RESPX: <Request('POST', 'https://api.shop.test/v2/orders')> not mocked!
 ```
 
-**这个报错是好事，不是 bug。** 它的含义是："有一个请求我没认领，我不知道该给它什么假响应，所以我拦下来告诉你。"如果没有这道保险，这个请求就会**真的发到外网**——于是测试悄悄开始联网、开始花钱、开始看运气，而你毫不知情。
+**<mark style="background: #BBFABBA6;">这个报错是好事，不是 bug。</mark>** 它的含义是："有一个请求我没认领，我不知道该给它什么假响应，所以我拦下来告诉你。"如果没有这道保险，这个请求就会**真的发到外网**——于是测试悄悄开始联网、开始花钱、开始看运气，而你毫不知情。
 
-所以工作区规则那句"**未覆盖的请求让它报错，不要关掉这个保险**"，落到代码上就是：**永远不要写 `assert_all_mocked=False`**。看到这个报错，正确反应是"我漏贴了一条规定"或者"我的业务代码请求了预期外的地址"，两种都值得你去看一眼。
+所以工作区规则那句"**未覆盖的请求让它报错，不要关掉这个保险**"，落到代码上就是：**永远不要写** **`assert_all_mocked=False`**。看到这个报错，正确反应是"我漏贴了一条规定"或者"我的业务代码请求了预期外的地址"，两种都值得你去看一眼。
 
-**等价的普通写法对照：`respx_mock` fixture vs `with respx.mock(...)`**
+**等价的普通写法对照：`respx_mock`** **fixture vs** **`with respx.mock(...)`**
 
 ```python
 # 写法 A：fixture（推荐，最省事）
@@ -450,7 +448,7 @@ uv run pytest -q test_llm_client.py
 
 **逐段解读**
 
-- `fake_api_key` fixture：业务代码里 `os.environ["LLM_API_KEY"]` 没有这个变量就会 `KeyError`。用 `monkeypatch.setenv` 塞一个假的，测试结束自动还原。**不要直接改 `os.environ`**——那会污染后面所有测试（工作区规则第 4 条）。假 key 只是个占位字符串，反正请求根本发不出去。
+- `fake_api_key` fixture：业务代码里 `os.environ["LLM_API_KEY"]` 没有这个变量就会 `KeyError`。用 `monkeypatch.setenv` 塞一个假的，测试结束自动还原。**不要直接改** **`os.environ`**——那会污染后面所有测试（工作区规则第 4 条）。假 key 只是个占位字符串，反正请求根本发不出去。
 - `no_sleep` fixture：这里 patch 的是 `time.sleep`，属于"环境噪音"，不是被测逻辑本身，所以 patch 它是合理的。注意它没有削弱断言：重试**次数**仍然由 `route.calls.call_count == 2` 真实验证着。
 - `side_effect=[...]`：整个测试的核心。列表按调用顺序消费——第一次请求命中 429，业务代码走进 `continue` 分支去重试，第二次请求命中 200。这就模拟出了"真实世界里偶发限流"的场景。
 - 三个断言全都指向**业务结果**：返回文本对不对、重试次数对不对、实际发出的请求内容对不对。对比一个反例——
@@ -464,7 +462,7 @@ assert resp.json() == {"x": 1}      # ← 断言的是自己上一行刚设进�
 
 这行断言恒成立，它只证明了 respx 能正常工作。它不涉及任何业务代码，把 `ask_llm` 整个删掉它照样绿。工作区规则"**断言必须针对业务结果**"要挡的就是这种写法。
 
-**单独展开：`side_effect` 还能做什么**
+**单独展开：`side_effect`** **还能做什么**
 
 ```python
 # 1) 传异常类，模拟网络超时（测超时处理分支）
@@ -481,9 +479,9 @@ respx_mock.post(URL).mock(side_effect=dynamic)
 
 **这一步你得到了什么**：能测出真 API 根本没法帮你复现的分支（限流、服务器错误、超时），而且断言的每一条都在检验你自己写的代码。
 
----
+***
 
-## 第 5 节：最小可用的实际用法（生产场景模板）
+## 第 5 节：<mark style="background: #BBFABBA6;">最小可用的实际用法（生产场景模板）</mark>
 
 直接复制这三个文件就能跑。第 4.3 的业务代码 `llm_client.py` 原样复用，这里补上项目该有的配置和 conftest。
 
@@ -568,10 +566,8 @@ def test_retries_exhausted(respx_mock):
    uv run pytest -q
    ```
    全绿，且输出头部 `plugins:` 那行要能看到 `asyncio-` 和 `respx-`；输出里不能有 `RuntimeWarning: coroutine ... was never awaited`。
-
 2. **查装饰性测试**（最能暴露问题的一步）
    随手把业务代码改坏一行——比如把 `resp.status_code == 429` 改成 `== 428`，或者把 `["choices"][0]` 改成 `["choices"][1]` —— 再跑一次，**必须有测试变红**。全绿说明你的测试是装饰品，重写。改完记得还原。
-
 3. **查真网外呼：断网再跑一次，必须仍全绿**
    ```bash
    # 关掉 Wi-Fi / 拔网线 / 关掉代理，然后：
@@ -580,7 +576,6 @@ def test_retries_exhausted(respx_mock):
    还是全绿 → 说明所有请求都被 respx 拦住了，一个都没漏出去。
    报 `ConnectError` / `ConnectTimeout` / DNS 失败 → **有测试在打真实网络**，去找那个漏掉的 route 补上。
    这一步不能省。它是唯一能物理证明"测试不联网"的手段，比读代码可靠。
-
 4. **抽查断言**
    随机挑一个测试，只读它的 `assert` 行，问自己一句：这行验证的是**业务结果**（返回值 / 状态变化 / 抛出的异常 / 实际发出的请求），还是我自己上几行刚 set 进去的 mock 值？后者就重写。
 
@@ -592,7 +587,7 @@ def test_retries_exhausted(respx_mock):
 
 这几项都属于加分项，入门阶段不配也能写出合格的测试。
 
----
+***
 
 ## 第 6 节：常见坑与易错点
 
@@ -609,6 +604,7 @@ respx.models.AllMockedAssertionError: RESPX: <Request('POST', 'https://api.shop.
 **原因**：`assert_all_mocked` 默认开启，遇到没有 route 匹配的请求就抛错，不让它出网。
 
 **解决**：看报错里的 URL 和方法，两种情况——
+
 - 你确实漏贴了规定 → 补一条 route
 - 业务代码请求的地址跟你预期的不一样 → 恭喜，测试帮你抓到了一个 bug
 
@@ -620,7 +616,7 @@ respx.models.AllMockedAssertionError: RESPX: <Request('POST', 'https://api.shop.
 
 关掉之后，未匹配的请求会被放行成真实网络请求，你的测试从此开始偷偷联网。这个报错是保险丝烧了在告诉你哪里短路，不是保险丝有问题。
 
-### 6.2 URL 匹配不上（尾斜杠 / query 参数 / base_url 拼接）
+### 6.2 URL 匹配不上（尾斜杠 / query 参数 / base\_url 拼接）
 
 **现象**：明明贴了 route，还是报 `not mocked!`，或者贴了 route 但没被调用。
 
@@ -631,7 +627,7 @@ respx.models.AllMockedAssertionError: RESPX: <Request('POST', 'https://api.shop.
   ```python
   respx_mock.get("https://a.test/s", params={"q": "hi"}).respond(200, json=[])
   ```
-- **`base_url` 是拼接，不是替换**。用了 `@pytest.mark.respx(base_url="https://api.test")` 之后，route 里写 `/v1/orders` 就够了；但如果这时还写完整 URL，就会拼成一个错的地址。两种写法别混用。
+- **`base_url`** **是拼接，不是替换**。用了 `@pytest.mark.respx(base_url="https://api.test")` 之后，route 里写 `/v1/orders` 就够了；但如果这时还写完整 URL，就会拼成一个错的地址。两种写法别混用。
 
 排查技巧：把 route 存成变量，在断言前打印 `route.called`，就知道是"没匹配上"还是"匹配上了但断言写错了"。
 
@@ -646,12 +642,14 @@ AssertionError: RESPX: some routes were not called!
 **现象**：测试逻辑看着没问题，业务断言也过了，偏偏在测试结束时报这个错。
 
 **原因**：你贴了一条 route，但整个测试跑完它一次都没被用到。而 `assert_all_called` 在两种情况下是开启的（实测 respx 0.23.1）：
+
 - `with respx.mock(...)`（**带括号**）
 - 用了 `@pytest.mark.respx(...)` marker 的 `respx_mock`
 
 裸用 `respx_mock` fixture 时它是关的，所以你可能一开始碰不到这个错，换了写法突然就撞上了。
 
 **解决**：先别急着关开关，先想"为什么这条 route 没被调用"——
+
 - 多贴了一条用不上的 route → 删掉它
 - 想测的分支根本没走到（比如重试代码有 bug，一次都没重试）→ 这是真 bug，去修业务代码
 - 确实是"这条 route 可能被调用、也可能不被调用" → 用 `respx_mock.route(...).mock(...)` 时把它标成可选，或改用不带 marker 的裸 fixture
@@ -692,10 +690,12 @@ RuntimeWarning: coroutine 'test_xxx' was never awaited
 **原因**：`async def` 函数被调用只会得到一个协程对象，不真正运行，除非有人 await 它。pytest 需要 `pytest-asyncio` 且配置 `asyncio_mode = "auto"` 才会自动接管这些 async 测试。
 
 **解决**：
+
 ```toml
 [tool.pytest.ini_options]
 asyncio_mode = "auto"        # pyproject.toml 里必须有这行
 ```
+
 并检查 pytest 输出头部 `plugins:` 行里有 `asyncio-`。async 场景下 respx 用法完全一样，只是记得 await：
 
 ```python
@@ -708,7 +708,7 @@ async def test_async_llm(respx_mock, llm_ok):
 
 respx 同时支持 `httpx.Client` 和 `httpx.AsyncClient`，不需要额外配置。async 的其他细节见 pytest 专篇。
 
----
+***
 
 ## 第 7 节：验证你学会了
 
@@ -716,12 +716,16 @@ respx 同时支持 `httpx.Client` 和 `httpx.AsyncClient`，不需要额外配�
 
 **第 1 题（概念复述）**
 不看笔记，用自己的话回答三个问题：① respx 是什么，用一句话加一个类比；② 测"调 LLM 的函数"如果不用它，会有哪些具体麻烦（至少说出 3 个）；③ 为什么应该拦在 HTTP 层，而不是用 `patch` 把自己写的 `ask_llm` 换掉？第 3 点要能说清"被测代码有没有真的执行"这个关键差别。
+
 > 答案在：第 1 节、第 2 节、第 4.1 节的分层示意图
 
 **第 2 题（默写最小拦截测试）**
 关掉本文，写出一个完整可跑的测试：业务函数用 `httpx.get` 请求 `https://api.demo.test/users/1`，返回响应 JSON 里的 `name` 字段；测试用 `respx_mock` 拦住它，断言函数返回了正确的名字。要求：不查文档写出 fixture 名、route 注册、`respond()` 的参数。写完自问一句——如果我把业务代码里的 `["name"]` 改成 `["username"]`，这个测试会不会变红？
+
 > 答案在：第 4.1 节
 
 **第 3 题（组合应用）**
 给一个"调外部天气 API 带重试"的函数写测试，要求覆盖：① 第一次返回 429、退避后第二次返回 200 的完整重试路径；② 断言最终业务结果正确；③ 断言**总共只发了 2 次请求**；④ 断言第二次请求实际带的 query 参数是对的；⑤ 用 `monkeypatch` 处理掉 API key 和 `sleep` 等待。写完跑第 5 节的自检四步，特别是**断网再跑一遍必须仍全绿**，以及**改坏一行业务代码必须有测试变红**。
+
 > 答案在：第 4.3 节（`side_effect` 列表、`route.calls`）、第 5 节（conftest 与自检步骤）、第 6.2 节（query 参数匹配）
+
