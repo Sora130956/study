@@ -62,7 +62,7 @@ async def root():
 ## 4. 运行开发服务器
 
 ```bash
-uv run fastapi dev main.py
+uv run uvicorn app.main:app --reload
 ```
 
 默认运行在 `http://127.0.0.1:8000`，支持代码热重载。
