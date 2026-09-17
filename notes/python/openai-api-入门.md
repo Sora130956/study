@@ -40,14 +40,14 @@
 
 ## 第 3 节：读下去之前，先搞懂这些概念
 
-| 术语 | 大白话解释 | 示例 | 对应正文节 |
-|------|-----------|------|-----------|
-| **API Key** | 你的身份证，证明你有权限调用 API | `sk-proj-abc123...` | 第 4 节示例 1 |
-| **messages** | 对话历史，告诉模型"之前说了什么" | `[{"role": "user", "content": "你好"}]` | 第 4 节示例 1 |
-| **role** | 消息发送者角色：`system`（系统指令）、`user`（用户）、`assistant`（AI 回复） | `role="system"` 表示"给 AI 的总指令" | 第 4 节示例 2 |
-| **temperature** | 回复的随机性：0=固定、2=极度发散 | `temperature=0` 适合提取数据 | 第 4 节示例 2 |
-| **max_tokens** | 回复最多生成多少个 token（约 0.75 个英文单词） | `max_tokens=500` 大约 375 个英文词 | 第 4 节示例 2 |
-| **JSON mode** | 强制模型返回合法 JSON | `response_format={"type": "json_object"}` | 第 4 节示例 3 |
+| 术语              | 大白话解释                                                | 示例                                        | 对应正文节     |
+| --------------- | ---------------------------------------------------- | ----------------------------------------- | --------- |
+| **API Key**     | 你的身份证，证明你有权限调用 API                                   | `sk-proj-abc123...`                       | 第 4 节示例 1 |
+| **messages**    | 对话历史，告诉模型"之前说了什么"                                    | `[{"role": "user", "content": "你好"}]`     | 第 4 节示例 1 |
+| **role**        | 消息发送者角色：`system`（系统指令）、`user`（用户）、`assistant`（AI 回复） | `role="system"` 表示"给 AI 的总指令"             | 第 4 节示例 2 |
+| **temperature** | 回复的随机性：0=固定、2=极度发散                                   | `temperature=0` 适合提取数据                    | 第 4 节示例 2 |
+| **max_tokens**  | 回复最多生成多少个 token（约 0.75 个英文单词）                        | `max_tokens=500` 大约 375 个英文词              | 第 4 节示例 2 |
+| **JSON mode**   | 强制模型返回合法 JSON                                        | `response_format={"type": "json_object"}` | 第 4 节示例 3 |
 
 ---
 
@@ -123,8 +123,8 @@ print(response.choices[0].message.content)
 
 **逐段解读**：
 
-- **system 消息的作用**：类似"给 AI 发的工作说明书"，它会影响后续所有回复的风格和行为。写在 `messages` 列表最前面。
-- **temperature=0**：回复变得固定（每次调用结果几乎一致），适合需要稳定输出的场景（如数据提取）。设为 1-2 则更有创意，但不可控。
+- <mark style="background: #BBFABBA6;">**system 消息的作用**：类似"给 AI 发的工作说明书"，它会影响后续所有回复的风格和行为。写在 `messages` 列表最前面。</mark>
+- <mark style="background: #BBFABBA6;">**temperature=0**：回复变得固定（每次调用结果几乎一致），适合需要稳定输出的场景（如数据提取）。设为 1-2 则更有创意，但不可控。</mark>
 - **max_tokens=100**：防止回复过长导致计费暴涨。1 token ≈ 0.75 个英文单词，中文约 1 token = 1 个字。
 
 **和我直觉相反的点**：`temperature=0` 不是"降低质量"，而是"锁定输出"——当你需要每次提取同样格式的数据时，这是必须项。
@@ -162,9 +162,9 @@ print(f"购买人：{result['name']}, 数量：{result['quantity']}")
 
 **逐段解读**：
 
-- **response_format**：告诉模型"无论如何都返回合法 JSON"，避免返回 `输出如下：{"name":...}` 这种带前缀的文本（会导致 `json.loads()` 报错）。
-- **prompt 里指定格式**：虽然有 `json_object` 约束，仍需在 prompt 里写清字段名和类型，否则模型可能自由发挥字段名。
-- **json.loads() 解析**：把字符串变成 Python 字典，之后就能像普通数据一样用 `result['name']` 访问。
+- <mark style="background: #BBFABBA6;">**response_format**：告诉模型"无论如何都返回合法 JSON"</mark>，避免返回 `输出如下：{"name":...}` 这种带前缀的文本（会导致 `json.loads()` 报错）。
+- **<mark style="background: #BBFABBA6;">prompt 里指定格式</mark>**：虽然有 `json_object` 约束，仍需在 prompt 里写清字段名和类型，否则模型可能自由发挥字段名。
+- **<mark style="background: #BBFABBA6;">json.loads() 解析</mark>**：把字符串变成 Python 字典，之后就能像普通数据一样用 `result['name']` 访问。
 
 **这一步你得到了什么**：可以把 LLM 当"智能正则表达式"——输入文本，输出结构化数据，直接对接下游程序（pandas、数据库、Excel）。
 

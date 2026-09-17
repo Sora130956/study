@@ -72,7 +72,7 @@ class User(BaseModel):
 
 ### 示例 1：最小可运行版本
 
-**目标**：定义一个数据结构，让 LLM 按格式返回并自动校验。
+**目标**：<mark style="background: #BBFABBA6;">定义一个数据结构，让 LLM 按格式返回并自动校验。</mark>
 
 ```python
 from pydantic import BaseModel
@@ -124,7 +124,7 @@ print(type(invoice))       # <class '__main__.Invoice'>
 
 ### 示例 2：加字段描述和约束
 
-**目标**：给字段加说明（帮助 LLM 理解）和验证规则。
+**目标**：<mark style="background: #BBFABBA6;">给字段加说明（帮助 LLM 理解）和验证规则。</mark>
 
 ```python
 from pydantic import BaseModel, Field
@@ -163,9 +163,9 @@ print(order.model_dump())  # 转成字典查看
 
 ---
 
-### 示例 3：嵌套结构和可选字段
+### 示例 3：<mark style="background: #BBFABBA6;">嵌套结构和可选字段</mark>
 
-**目标**：处理复杂数据（对象里包含对象、某些字段可能缺失）。
+**目标**：<mark style="background: #BBFABBA6;">处理复杂数据（对象里包含对象、某些字段可能缺失）。</mark>
 
 ```python
 from pydantic import BaseModel, Field
@@ -277,6 +277,139 @@ print(f"成功提取 {len(results)} 条记录")
 - 自定义校验器（如 `@field_validator` 检查电话号格式）
 - 日志记录失败案例（保存原始文本和错误，后续人工审核）
 - 重试机制（校验失败时重新调用 LLM，换个 prompt）
+
+### <mark style="background: #BBFABBA6;">杂乱数据的标准做法：模型层宽松 + pandas 层兜底</mark>
+
+真实数据往往每条字段都不全（有的缺金额、有的缺日期）。标准做法是分层处理：
+
+| 层面 | 职责 | 做法 |
+|:---|:---|:---|
+| Pydantic 模型 | 保证「能解析」 | 全设 `Optional`，字段缺失不报错 |
+| pandas | 保证「能用」 | 缺失值填充、过滤无效行、类型修正 |
+
+```python
+from pydantic import BaseModel, Field
+from typing import Optional
+from openai import OpenAI
+import pandas as pd
+import os
+
+# ========== 模型层：全 Optional，能解析就行 ==========
+class Invoice(BaseModel):
+    invoice_no: Optional[str] = Field(default=None, description="发票号")
+    amount: Optional[float] = Field(default=None, description="金额")
+    date: Optional[str] = Field(default=None, description="日期")
+    vendor: Optional[str] = Field(default=None, description="供应商")
+
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+texts = [
+    "发票INV-001，金额500元，日期2026-09-10，供应商：ABC公司",
+    "发票INV-002，金额1200元",          # 缺日期、供应商
+    "金额800元，供应商：XYZ公司",        # 缺发票号、日期
+]
+
+results = []
+for text in texts:
+    response = client.beta.chat.completions.parse(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": "提取发票信息，没有的字段留空"},
+            {"role": "user", "content": text}
+        ],
+        response_format=Invoice,
+        temperature=0
+    )
+    results.append(response.choices[0].message.parsed.model_dump())
+
+# ========== pandas 层：清洗和兜底 ==========
+df = pd.DataFrame(results)
+
+print(df.isnull().sum())                      # 1. 先看缺失情况
+df = df.dropna(subset=['invoice_no'])         # 2. 主键缺失的行直接丢弃
+df['amount'] = df['amount'].fillna(0)         # 3. 核心字段缺失先占位
+df['date'] = df['date'].fillna('待补充')      # 4. 可后补的字段给标记
+df['vendor'] = df['vendor'].fillna('未知')    # 5. 非关键字段填默认值
+```
+
+**各字段的处理策略**：
+
+| 场景 | pandas 策略 | 理由 |
+|:---|:---|:---|
+| 主键缺失（发票号） | `dropna` 丢弃 | 没有主键这条数据就没意义 |
+| 核心字段缺失（金额） | `fillna(0)` 或单独标记 | 先占位，后续人工补 |
+| 可推断字段（日期） | `fillna('待补充')` | 可能从文件名/元数据推断 |
+| 非关键字段（供应商） | `fillna('未知')` 或保留 NaN | 缺失不影响主流程 |
+
+**为什么不反过来在模型层严格**：批量 10,000 条时，如果缺字段就 `ValidationError`，5% 失败率就是 500 条要人工处理，不可接受。模型层宽松让所有数据都能进 pandas，再按业务规则分级处理。
+
+### 必填字段缺失时，到底谁报错
+
+责任链是：**LLM 生成 JSON → Pydantic 校验抛错 → 你的 try-except 兜底**。分两种走向：
+
+1. <mark style="background: #BBFABBA6;">**LLM 为凑必填字段编造数据**（更常见、更危险）</mark>
+   `response_format` 会把必填字段写进 JSON schema 强制模型输出。文本里明明没有发票号，模型可能返回 `"invoice_no": "未知"` 甚至编造 `"INV-000"`——**不报错，数据被悄悄污染**。这是必填字段最大的坑。
+
+2. **LLM 返回 null/缺失，Pydantic 校验报错**
+   此时抛异常的是 Pydantic（SDK 的 `parse()` 内部校验），不是 LLM——API 调用本身已经成功：
+   ```
+   ValidationError: 1 validation error for Invoice
+   invoice_no
+     Field required [type=missing, ...]
+   ```
+
+**结论**：<mark style="background: #BBFABBA6;">这也是杂乱数据要全设 `Optional` 的理由——必填字段会**诱导模型编数据**，比报错更可怕。宁可返回 `None`，也不要让它瞎编。</mark>
+
+### 完整流水线：<mark style="background: #BBFABBA6;">预检 → LLM 提取 → 后检 → 缺失清单</mark>
+
+对敏感字段，能在调 LLM 之前校验的要先校验——但**能不能预检取决于源数据是否结构化**：
+
+- **结构化源数据（CSV/Excel/数据库）**：可以预检。比如 Excel 少了一整列「金额」，pandas 几分钟查出来，不花一分钱 API 费
+- **非结构化源数据（PDF 扫描件、自由文本）**：没法预检——字段本来就要靠 LLM 从文本里挖出来，发票里有没有金额，只有模型读完才知道。校验只能放在 LLM 之后
+
+```text
+原始数据
+  │
+  ├─ [预检] 结构化数据：pandas 检查关键列缺失 → 记录+排除（省 API 钱）
+  │         非结构化数据：跳过此步
+  ▼
+调 LLM（可能缺失的字段全 Optional，宁可 None 不瞎编）
+  │
+  ├─ [后检] pandas 按业务规则分级：主键缺失丢弃 / 核心字段标记 / 普通字段填默认
+  ▼
+产出两份文件：
+  1. 干净数据（交付用）
+  2. 缺失清单（给客户确认：哪些条目缺什么字段，请补充 or 确认按默认值处理）
+```
+
+**预检代码示例**（结构化源数据）：
+
+```python
+df = pd.read_excel("客户提供.xlsx")
+
+# 调用 LLM 之前的预检：关键列缺失的行先排除，不花 API 钱
+missing = df[df['发票号'].isnull()]
+if len(missing) > 0:
+    missing.to_csv("缺失条目_待客户确认.csv", index=False)  # 缺失清单是正式交付物
+    df = df.dropna(subset=['发票号'])  # 只对完整数据调 LLM
+```
+
+**缺失清单的客户沟通要点**：
+
+- 缺失清单是**交付物的一部分**，体现专业度，不是附加麻烦
+- 写清楚：哪条数据、缺什么字段、建议怎么处理（「第 37 行缺金额，已标记为待补充，请确认」）
+- 合同里提前约定：「数据缺失导致的交付偏差由客户补充数据后修复」——否则客户会认为是你提取能力不行
+
+### Optional 还是必填？判断标准
+
+<mark style="background: #BBFABBA6;">不是「一律 Optional」，而是看字段缺失时你要什么：</mark>
+
+| 场景 | 字段策略 | 理由 |
+|:---|:---|:---|
+| 抽取类（发票/简历/PDF），源数据不可控 | 可能缺失的全 `Optional` + pandas 兜底 | 缺失是常态，标记后人工处理 |
+| 生成类（生成配置/SQL/参数），每个字段都要用 | 保持必填，`ValidationError` 触发重试 | 缺字段 = 这次调用作废，fail-fast 更好 |
+
+**一句话**：缺失时要「标记后人工处理」→ `Optional`；缺失时要「作废重试」→ 必填。
 
 ---
 
