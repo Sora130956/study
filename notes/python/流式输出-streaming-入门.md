@@ -167,7 +167,7 @@ with open("output.txt", "w", encoding="utf-8") as f:
 
 ---
 
-### 示例 3：统计 token 和处理结束标志
+### 示例 3：<mark style="background: #BBFABBA6;">统计 token 和处理结束标志</mark>
 
 **目标**：判断流是否结束，统计 token 消耗。
 
@@ -181,7 +181,7 @@ response = client.chat.completions.create(
     model="gpt-4o-mini",
     messages=[{"role": "user", "content": "介绍一下 FastAPI"}],
     stream=True,
-    stream_options={"include_usage": True}  # 开启 usage 统计
+    stream_options={"include_usage": True}  # 开启 usage 统计 !!!
 )
 
 full_content = ""
@@ -190,7 +190,7 @@ for chunk in response:
     # 检查是否是最后一个 chunk（包含 usage 信息）
     if chunk.choices[0].finish_reason == "stop":
         print("\n[生成结束]")
-        # 获取 token 使用情况
+        # 获取 token 使用情况 最后一个chunk有usage消耗token统计
         if hasattr(chunk, "usage") and chunk.usage:
             print(f"输入 token: {chunk.usage.prompt_tokens}")
             print(f"输出 token: {chunk.usage.completion_tokens}")

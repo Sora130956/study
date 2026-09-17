@@ -34,12 +34,12 @@
 
 **函数调用意图被隐藏在自然语言里**，而自然语言不是结构化的，解析起来既慢又不可靠。
 
-### 经典应用场景
+### <mark style="background: #BBFABBA6;">经典应用场景</mark>
 
-- 联网查询（搜索、查天气、查股票）
-- 操作数据库（查询、插入、更新）
-- 调用第三方 API（发邮件、创建订单、调用计算器）
-- 多步骤任务（LLM 判断需要哪几步，自动编排工具调用顺序）
+- <mark style="background: #BBFABBA6;">联网查询（搜索、查天气、查股票）</mark>
+- <mark style="background: #BBFABBA6;">操作数据库（查询、插入、更新）</mark>
+- <mark style="background: #BBFABBA6;">调用第三方 API（发邮件、创建订单、调用计算器）</mark>
+- <mark style="background: #BBFABBA6;">多步骤任务（LLM 判断需要哪几步，自动编排工具调用顺序）</mark>
 
 ---
 
@@ -123,8 +123,8 @@ messages = [{"role": "user", "content": "北京今天天气怎么样？"}]
 response = client.chat.completions.create(
     model="gpt-4o-mini",
     messages=messages,
-    tools=tools,  # 传入工具定义
-    tool_choice="auto"  # 让 LLM 自动判断是否调用
+    tools=tools,  # *********** 传入工具定义 *************
+    tool_choice="auto"  #************ 让 LLM 自动判断是否调用 ***********
 )
 
 message = response.choices[0].message
