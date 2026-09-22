@@ -42,11 +42,11 @@ print(result.output)
 
 ### 三种输出模式速览
 
-| 模式 | 原理 | 可靠性 | 模型支持度 | 何时用 |
-|------|------|--------|-----------|--------|
-| **Tool Output**（默认） | 注册一个名为 `final_result` 的工具，模型通过 tool call 交付结果 | 高 | 所有支持函数调用的模型 | <mark style="background: #BBFABBA6;">默认首选</mark> |
-| **Native Output** | 用模型原生的 JSON Schema response format | 最高 | 仅部分模型（OpenAI / Gemini 等） | 纯提取、不需要函数工具时 |
-| **Prompted Output** | 把 schema 塞进 instructions，靠提示词约束 | 最低 | 所有模型 | 前两者都不支持时的兜底 |
+| 模式                  | 原理                                            | 可靠性 | 模型支持度                    | 何时用                                              |
+| ------------------- | --------------------------------------------- | --- | ------------------------ | ------------------------------------------------ |
+| **Tool Output**（默认） | 注册一个名为 `final_result` 的工具，模型通过 tool call 交付结果 | 高   | 所有支持函数调用的模型              | <mark style="background: #BBFABBA6;">默认首选</mark> |
+| **Native Output**   | 用模型原生的 JSON Schema response format            | 最高  | 仅部分模型（OpenAI / Gemini 等） | 纯提取、不需要函数工具时                                     |
+| **Prompted Output** | 把 schema 塞进 instructions，靠提示词约束               | 最低  | 所有模型                     | 前两者都不支持时的兜底                                      |
 
 ---
 
@@ -511,7 +511,7 @@ async with agent.run_stream('Who was Einstein?') as result:
 
 大白话：`TextOutput` 只是"文本 → 文本"的管道，`Output Function` 是模型驱动的动作执行。
 
-### 3.7 StructuredDict —— 运行时动态 Schema
+### 3.7 <mark style="background: #BBFABBA6;">StructuredDict —— 运行时动态 Schema</mark>
 
 #### 什么场景需要它？
 
@@ -596,12 +596,12 @@ print(result.output)
 
 **这意味着什么？**
 
-| 阶段       | Pydantic 模型（`BaseModel`） | StructuredDict            |
-| -------- | ------------------------ | ------------------------- |
-| 发给模型     | ✅ 转成 JSON Schema 发送      | ✅ 直接发送                    |
-| 模型返回后    | ✅ 用 Pydantic 校验字段类型和必填项 | ❌ **不校验**，原样返回            |
-| 字段类型错误时  | 抛异常或触发 `ModelRetry`     | ❌ 静默通过，你拿到错误数据            |
-| `age` 是字符串 | 自动转成 `int`（如果可以）        | ❌ 保持字符串，调用方 `age + 1` 会炸 |
+| 阶段         | Pydantic 模型（`BaseModel`） | StructuredDict           |
+| ---------- | ------------------------ | ------------------------ |
+| 发给模型       | ✅ 转成 JSON Schema 发送      | ✅ 直接发送                   |
+| 模型返回后      | ✅ 用 Pydantic 校验字段类型和必填项  | ❌ **不校验**，原样返回           |
+| 字段类型错误时    | 抛异常或触发 `ModelRetry`      | ❌ 静默通过，你拿到错误数据           |
+| `age` 是字符串 | 自动转成 `int`（如果可以）         | ❌ 保持字符串，调用方 `age + 1` 会炸 |
 
 **实际行为示例**：
 
@@ -620,7 +620,7 @@ result = agent.run_sync('Create a person')
 print(result.output['age'] + 1)  # ❌ TypeError: can only concatenate str
 ```
 
-#### 正确做法：配 output validator 手动校验
+#### <mark style="background: #BBFABBA6;">正确做法：配 output validator 手动校验</mark>
 
 ```python
 from pydantic_ai import Agent, RunContext, ModelRetry
